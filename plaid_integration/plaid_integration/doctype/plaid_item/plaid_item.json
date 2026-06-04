@@ -1,0 +1,129 @@
+{
+ "actions": [],
+ "autoname": "field:item_id",
+ "creation": "2026-06-02 00:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "item_id",
+  "bank",
+  "column_break_1",
+  "company",
+  "status",
+  "access_section",
+  "access_token",
+  "sync_section",
+  "last_sync_date",
+  "column_break_2",
+  "plaid_sync_cursor"
+ ],
+ "fields": [
+  {
+   "bold": 1,
+   "fieldname": "item_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Item ID",
+   "no_copy": 1,
+   "read_only": 1,
+   "unique": 1
+  },
+  {
+   "bold": 1,
+   "fieldname": "bank",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Bank",
+   "no_copy": 1,
+   "options": "Bank",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Company",
+   "no_copy": 1,
+   "options": "Company",
+   "read_only": 1
+  },
+  {
+   "default": "Active",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "no_copy": 1,
+   "options": "Active\nNeeds Re-auth",
+   "read_only": 1
+  },
+  {
+   "fieldname": "access_section",
+   "fieldtype": "Section Break",
+   "label": "Access"
+  },
+  {
+   "fieldname": "access_token",
+   "fieldtype": "Password",
+   "label": "Access Token",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "sync_section",
+   "fieldtype": "Section Break",
+   "label": "Sync"
+  },
+  {
+   "fieldname": "last_sync_date",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Last Sync",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "plaid_sync_cursor",
+   "fieldtype": "Small Text",
+   "label": "Plaid Sync Cursor",
+   "hidden": 1,
+   "no_copy": 1,
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "in_create": 1,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-06-02 17:04:36.150755",
+ "modified_by": "Administrator",
+ "module": "Plaid Integration",
+ "name": "Plaid Item",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "bank"
+}
