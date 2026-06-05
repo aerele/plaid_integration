@@ -58,7 +58,7 @@
    "in_list_view": 1,
    "label": "Status",
    "no_copy": 1,
-   "options": "Active\nNeeds Re-auth",
+   "options": "Active\nNeeds Re-auth\nDisconnected",
    "read_only": 1
   },
   {

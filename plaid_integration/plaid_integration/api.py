@@ -38,6 +38,39 @@ def complete_reauth(plaid_item: str):
 
 
 @frappe.whitelist()
+def disconnect_bank(plaid_item: str) -> dict:
+	"""Disconnect a bank: revoke the Item at Plaid and stop syncing it locally.
+
+	Linked Bank Accounts and their transaction history are retained — only the
+	live Plaid connection (access token and sync cursor) is removed. Reconnecting
+	later is a fresh link from Plaid Settings, which creates a new Plaid Item.
+	"""
+	from frappe.utils.password import remove_encrypted_password
+
+	_check_plaid_enabled()
+
+	doc = frappe.get_doc("Plaid Item", plaid_item)
+	access_token = doc.get_password("access_token")
+
+	if access_token:
+		try:
+			PlaidConnector().remove_item(access_token)
+		except Exception:
+			# The Item may already be gone at Plaid (e.g. ITEM_NOT_FOUND). The
+			# connector logs the details; continue with local cleanup so the
+			# connection is not left dangling.
+			pass
+
+	frappe.db.set_value("Plaid Item", plaid_item, {
+		"status": "Disconnected",
+		"plaid_sync_cursor": None,
+	})
+	remove_encrypted_password("Plaid Item", plaid_item, "access_token")
+
+	return {"disconnected": True}
+
+
+@frappe.whitelist()
 def add_bank_accounts(public_token: str, institution_name: str, company: str) -> dict:
 	"""Exchange public_token, create Bank + Plaid Item if needed, then create Bank Account records."""
 	connector = PlaidConnector()
