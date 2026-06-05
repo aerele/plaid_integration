@@ -58,7 +58,7 @@
    "in_list_view": 1,
    "label": "Status",
    "no_copy": 1,
-   "options": "Active\nNeeds Re-auth",
+   "options": "Active\nNeeds Re-auth\nDisconnected",
    "read_only": 1
   },
   {
@@ -93,8 +93,8 @@
   {
    "fieldname": "plaid_sync_cursor",
    "fieldtype": "Small Text",
-   "label": "Plaid Sync Cursor",
    "hidden": 1,
+   "label": "Plaid Sync Cursor",
    "no_copy": 1,
    "read_only": 1
   }
@@ -103,7 +103,7 @@
  "in_create": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-06-02 17:04:36.150755",
+ "modified": "2026-06-05 12:52:27.193598",
  "modified_by": "Administrator",
  "module": "Plaid Integration",
  "name": "Plaid Item",

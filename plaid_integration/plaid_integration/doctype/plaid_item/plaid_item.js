@@ -3,13 +3,60 @@
 
 frappe.ui.form.on("Plaid Item", {
 	refresh(frm) {
-		if (frm.doc.status === "Needs Re-auth" && !frm.doc.__islocal) {
+		if (frm.doc.__islocal) {
+			return;
+		}
+
+		if (frm.doc.status === "Needs Re-auth") {
 			frm.add_custom_button(__("Re-connect Bank"), () => {
 				fetch_reauth_token_and_open(frm);
 			}).addClass("btn-warning");
 		}
+
+		if (frm.doc.status !== "Disconnected") {
+			frm.add_custom_button(__("Disconnect Bank"), () => {
+				confirm_disconnect_bank(frm);
+			});
+		}
 	},
 });
+
+function confirm_disconnect_bank(frm) {
+	frappe.confirm(
+		__(
+			"Disconnect <b>{0}</b> from Plaid? Existing transactions are kept, but no new transactions will sync. To reconnect later, link the bank again from Plaid Settings.",
+			[frm.doc.bank]
+		),
+		() => disconnect_bank(frm)
+	);
+}
+
+function disconnect_bank(frm) {
+	frappe.call({
+		method: "plaid_integration.plaid_integration.api.disconnect_bank",
+		args: { plaid_item: frm.doc.name },
+		freeze: true,
+		freeze_message: __("Disconnecting bank..."),
+		callback(r) {
+			if (!r.message || !r.message.disconnected) {
+				return;
+			}
+
+			frappe.show_alert({
+				message: __("Bank disconnected successfully."),
+				indicator: "green",
+			});
+			frm.reload_doc();
+		},
+		error_callback() {
+			frappe.msgprint({
+				title: __("Disconnection Failed"),
+				message: __("Could not disconnect the bank. Please check the Error Log."),
+				indicator: "red",
+			});
+		},
+	});
+}
 
 function fetch_reauth_token_and_open(frm) {
 	frappe.call({

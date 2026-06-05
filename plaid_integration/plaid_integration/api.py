@@ -38,6 +38,39 @@ def complete_reauth(plaid_item: str):
 
 
 @frappe.whitelist()
+def disconnect_bank(plaid_item: str) -> dict:
+	"""Disconnect a bank: revoke the Item at Plaid and stop syncing it locally.
+
+	Linked Bank Accounts and their transaction history are retained — only the
+	live Plaid connection (access token and sync cursor) is removed. Reconnecting
+	later is a fresh link from Plaid Settings, which creates a new Plaid Item.
+	"""
+	from frappe.utils.password import remove_encrypted_password
+
+	_check_plaid_enabled()
+
+	doc = frappe.get_doc("Plaid Item", plaid_item)
+	access_token = doc.get_password("access_token")
+
+	if access_token:
+		try:
+			PlaidConnector().remove_item(access_token)
+		except Exception:
+			# The Item may already be gone at Plaid (e.g. ITEM_NOT_FOUND). The
+			# connector logs the details; continue with local cleanup so the
+			# connection is not left dangling.
+			pass
+
+	frappe.db.set_value("Plaid Item", plaid_item, {
+		"status": "Disconnected",
+		"plaid_sync_cursor": None,
+	})
+	remove_encrypted_password("Plaid Item", plaid_item, "access_token")
+
+	return {"disconnected": True}
+
+
+@frappe.whitelist()
 def add_bank_accounts(public_token: str, institution_name: str, company: str) -> dict:
 	"""Exchange public_token, create Bank + Plaid Item if needed, then create Bank Account records."""
 	connector = PlaidConnector()
@@ -140,20 +173,23 @@ def plaid_webhook() :
 	if not item_id:
 		return
 
+	item = frappe.db.get_value("Plaid Item", item_id, ["bank", "status"], as_dict=True)
+
+	# Ignore webhooks for unknown or already disconnected items.
+	if not item or item.status == "Disconnected":
+		return
+
 	if webhook_type == "ITEM" and webhook_code == "ITEM_LOGIN_REQUIRED":
-		if frappe.db.exists("Plaid Item", item_id):
-			bank = frappe.db.get_value("Plaid Item", item_id, "bank")
-			frappe.db.set_value("Plaid Item", item_id, "status", "Needs Re-auth")
-			_notify_reauth_required(item_id, bank)
+		frappe.db.set_value("Plaid Item", item_id, "status", "Needs Re-auth")
+		_notify_reauth_required(item_id, item.bank)
 
 	elif webhook_type == "TRANSACTIONS" and webhook_code == "SYNC_UPDATES_AVAILABLE":
-		if frappe.db.exists("Plaid Item", item_id):
-			frappe.enqueue(
-				method="plaid_integration.plaid_integration.api._sync_item_transactions",
-				queue="long",
-				enqueue_after_commit=True,
-				plaid_item=item_id,
-			)
+		frappe.enqueue(
+			method="plaid_integration.plaid_integration.api._sync_item_transactions",
+			queue="long",
+			enqueue_after_commit=True,
+			plaid_item=item_id,
+		)
 
 
 def _get_notification_users() -> list[str]:
@@ -263,7 +299,15 @@ def sync_all_transactions() -> dict:
 def _sync_item_transactions(plaid_item: str):
 	"""Background job — sync all transactions for one Plaid Item."""
 	doc = frappe.get_doc("Plaid Item", plaid_item)
+
+	# A disconnected item has no valid access token — nothing to sync.
+	if doc.status == "Disconnected":
+		return
+
 	access_token = doc.get_password("access_token")
+	if not access_token:
+		return
+
 	cursor = doc.plaid_sync_cursor or None
 
 	result = PlaidConnector().sync_transactions(access_token, cursor)
