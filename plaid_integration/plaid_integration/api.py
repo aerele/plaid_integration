@@ -173,20 +173,23 @@ def plaid_webhook() :
 	if not item_id:
 		return
 
+	item = frappe.db.get_value("Plaid Item", item_id, ["bank", "status"], as_dict=True)
+
+	# Ignore webhooks for unknown or already disconnected items.
+	if not item or item.status == "Disconnected":
+		return
+
 	if webhook_type == "ITEM" and webhook_code == "ITEM_LOGIN_REQUIRED":
-		if frappe.db.exists("Plaid Item", item_id):
-			bank = frappe.db.get_value("Plaid Item", item_id, "bank")
-			frappe.db.set_value("Plaid Item", item_id, "status", "Needs Re-auth")
-			_notify_reauth_required(item_id, bank)
+		frappe.db.set_value("Plaid Item", item_id, "status", "Needs Re-auth")
+		_notify_reauth_required(item_id, item.bank)
 
 	elif webhook_type == "TRANSACTIONS" and webhook_code == "SYNC_UPDATES_AVAILABLE":
-		if frappe.db.exists("Plaid Item", item_id):
-			frappe.enqueue(
-				method="plaid_integration.plaid_integration.api._sync_item_transactions",
-				queue="long",
-				enqueue_after_commit=True,
-				plaid_item=item_id,
-			)
+		frappe.enqueue(
+			method="plaid_integration.plaid_integration.api._sync_item_transactions",
+			queue="long",
+			enqueue_after_commit=True,
+			plaid_item=item_id,
+		)
 
 
 def _get_notification_users() -> list[str]:
@@ -296,7 +299,15 @@ def sync_all_transactions() -> dict:
 def _sync_item_transactions(plaid_item: str):
 	"""Background job — sync all transactions for one Plaid Item."""
 	doc = frappe.get_doc("Plaid Item", plaid_item)
+
+	# A disconnected item has no valid access token — nothing to sync.
+	if doc.status == "Disconnected":
+		return
+
 	access_token = doc.get_password("access_token")
+	if not access_token:
+		return
+
 	cursor = doc.plaid_sync_cursor or None
 
 	result = PlaidConnector().sync_transactions(access_token, cursor)
